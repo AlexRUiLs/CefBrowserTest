@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:CefBrowserTest"
         xmlns:wpf="clr-namespace:CefSharp.Wpf;assembly=CefSharp.Wpf"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="750" Width="1000">
     <Grid>
         <wpf:ChromiumWebBrowser Name="ChromiumWebBrowser" Visibility="Hidden" Grid.Row="0" Address="https://wwbm.com" LoadingStateChanged="ChromiumWebBrowser_LoadingStateChanged" />
     </Grid>
