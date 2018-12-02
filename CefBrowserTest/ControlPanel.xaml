@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CefBrowserTest"
         mc:Ignorable="d"
-        Title="ControlPanel" Height="350" Width="525">
+        Title="ControlPanel" Height="350" Width="525" Closed="ControlPanelWindow_Closed">
     <Grid>
         <Grid x:Name="LoginGrid" Visibility="Visible">
             <Button x:Name="LoginButton" Click="LoginButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Width="60">Login</Button>

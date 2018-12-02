@@ -23,6 +23,7 @@ namespace CefBrowserTest
         private ExpandedChannelModel channel;
         private PrivatePopulatedUserModel user;
         private InteractiveClient interactiveClient;
+        private ChatClient chatClient;
 
         private List<InteractiveGameListingModel> games;
         private InteractiveGameListingModel game;
@@ -36,10 +37,11 @@ namespace CefBrowserTest
 
         private MainWindow mainWindow = new MainWindow();
 
-        private readonly Dictionary<string, string> sessionsUsersMapping = new Dictionary<string, string>(); // mapping <sessionId, username>
-        private readonly Dictionary<string, string> usersVotes = new Dictionary<string, string>(); // mapping <username, vote>
+        private readonly List<User> users = new List<User>();
+        private readonly Dictionary<User, string> usersVotes = new Dictionary<User, string>(); // mapping <username, vote>
+
         private const string AnswerA = "A", AnswerB = "B", AnswerC = "C", AnswerD = "D";
-        private Dictionary<string, int> votesCounters = new Dictionary<string, int>() {{AnswerA, 0}, {AnswerB, 0}, {AnswerC, 0}, {AnswerD, 0}};
+        private readonly Dictionary<string, int> votesCounters = new Dictionary<string, int>() {{AnswerA, 0}, {AnswerB, 0}, {AnswerC, 0}, {AnswerD, 0}};
 
 
         public ControlPanel()
@@ -58,6 +60,31 @@ namespace CefBrowserTest
             {
                 OAuthClientScopeEnum.channel__details__self,
                 OAuthClientScopeEnum.channel__update__self,
+
+                OAuthClientScopeEnum.chat__bypass_links,
+                OAuthClientScopeEnum.chat__bypass_slowchat,
+                OAuthClientScopeEnum.chat__change_ban,
+                OAuthClientScopeEnum.chat__change_role,
+                OAuthClientScopeEnum.chat__chat,
+                OAuthClientScopeEnum.chat__connect,
+                OAuthClientScopeEnum.chat__clear_messages,
+                OAuthClientScopeEnum.chat__edit_options,
+                OAuthClientScopeEnum.chat__giveaway_start,
+                OAuthClientScopeEnum.chat__poll_start,
+                OAuthClientScopeEnum.chat__poll_vote,
+                OAuthClientScopeEnum.chat__purge,
+                OAuthClientScopeEnum.chat__remove_message,
+                OAuthClientScopeEnum.chat__timeout,
+                OAuthClientScopeEnum.chat__view_deleted,
+                OAuthClientScopeEnum.chat__whisper,
+
+                OAuthClientScopeEnum.channel__details__self,
+                OAuthClientScopeEnum.channel__update__self,
+
+                OAuthClientScopeEnum.user__details__self,
+                OAuthClientScopeEnum.user__log__self,
+                OAuthClientScopeEnum.user__notification__self,
+                OAuthClientScopeEnum.user__update__self,
 
                 OAuthClientScopeEnum.interactive__manage__self,
                 OAuthClientScopeEnum.interactive__robot__self,
@@ -81,7 +108,13 @@ namespace CefBrowserTest
                 this.LoginGrid.Visibility = Visibility.Collapsed;
 
                 this.GameSelectGrid.Visibility = Visibility.Visible;
-            }
+
+                this.chatClient = await ChatClient.CreateFromChannel(this.connection, this.channel);
+                if (await this.chatClient.Connect() && await this.chatClient.Authenticate())
+                {
+                    this.InteractiveDataTextBlock.Text += "Connected to the chat." + Environment.NewLine;
+                }
+            }   
         }
 
         private async void GameSelectButton_Click(object sender, RoutedEventArgs e)
@@ -155,10 +188,7 @@ namespace CefBrowserTest
 
         private async void MainWindow_Closed(object sender, EventArgs e)
         {
-            if (this.interactiveClient != null)
-            {
-                await this.interactiveClient.Disconnect();
-            }
+            
         }
 
         #region Event Methods
@@ -180,53 +210,74 @@ namespace CefBrowserTest
         {
             this.InteractiveDataTextBlock.Text += "Input Received: " + e.participantID + " - " + e.input.eventType + " - " + e.input.controlID + Environment.NewLine;
 
-            if (e.input.eventType.Equals("mouseup")) // register vote
+            
+            if (e.input.eventType.Equals("mousedown"))
             {
-                if (!sessionsUsersMapping.ContainsKey(e.participantID)) // added to support users who not recorded by Joined event
-                {
-                    var allParticipants = await ((InteractiveClient)sender).GetAllParticipants(null);
-                    var participant = allParticipants.participants.Single(p => p.sessionID.Equals(e.participantID));
-                    this.sessionsUsersMapping[participant.sessionID] = participant.username;
-                    this.InteractiveDataTextBlock.Text += $"[Info]: Registered player: session id {e.participantID}, user {participant.username}" + Environment.NewLine;
-                }
-                 
-                if (!usersVotes.ContainsKey(sessionsUsersMapping[e.participantID]))
-                {
-                    usersVotes[sessionsUsersMapping[e.participantID]] = string.Empty;
-                }
+                this.ProcessVote(sender, e);
 
-                if (!usersVotes[sessionsUsersMapping[e.participantID]].Equals(e.input.controlID))
+                if (e.transactionID != null)
                 {
-                    if (!usersVotes[sessionsUsersMapping[e.participantID]].Equals(string.Empty)) // very first vote of the session ID for current question
+
+
+                    InteractiveConnectedButtonControlModel button =
+                        this.buttons.FirstOrDefault(b => b.controlID.Equals(e.input.controlID));
+                    if (button != null)
                     {
-                        this.votesCounters[usersVotes[sessionsUsersMapping[e.participantID]]]--;
+                        InteractiveConnectedSceneModel scene =
+                            this.scenes.FirstOrDefault(s => s.buttons.Contains(button));
+                        if (scene != null)
+                        {
+                            button.cooldown =
+                                DateTimeHelper.DateTimeOffsetToUnixTimestamp(DateTimeOffset.Now.AddSeconds(10));
+                            await this.interactiveClient.UpdateControls(scene,
+                                new List<InteractiveConnectedButtonControlModel>() {button});
+                            this.InteractiveDataTextBlock.Text +=
+                                "Sent 10 second cooldown to button: " + e.input.controlID + Environment.NewLine;
+                        }
                     }
-                        
-                    this.votesCounters[e.input.controlID]++;
-                    usersVotes[sessionsUsersMapping[e.participantID]] = e.input.controlID;
-                }
 
-                this.InteractiveDataTextBlock.Text += $"A:{votesCounters[AnswerA]}, B:{votesCounters[AnswerB]}, C:{votesCounters[AnswerC]}, D:{votesCounters[AnswerD]}" + Environment.NewLine;
+                    await this.interactiveClient.CaptureSparkTransaction(e.transactionID);
+                    this.InteractiveDataTextBlock.Text += "Spark Transaction Captured: " + e.participantID + " - " +
+                                                          e.input.eventType + " - " + e.input.controlID +
+                                                          Environment.NewLine;
+                }
+            }
+        }
+
+        private async void ProcessVote(object sender, InteractiveGiveInputModel e)
+        {
+            var existingUser = users.FirstOrDefault(u => u.Sessions.Contains(e.participantID));
+            if (existingUser == null) // added to support users who not recorded by Joined event
+            {
+                var allParticipants = await((InteractiveClient)sender).GetAllParticipants(null);
+                var participant = allParticipants.participants.Single(p => p.sessionID.Equals(e.participantID));
+                existingUser = new User(participant.username, participant.sessionID);
+                this.users.Add(existingUser);
+                this.InteractiveDataTextBlock.Text += $"[Info]: Registered player: session id {e.participantID}, user {participant.username}" + Environment.NewLine;
             }
 
-
-            if (e.input.eventType.Equals("mousedown") && e.transactionID != null)
+            if (!usersVotes.ContainsKey(existingUser))
             {
-                InteractiveConnectedButtonControlModel button = this.buttons.FirstOrDefault(b => b.controlID.Equals(e.input.controlID));
-                if (button != null)
+                usersVotes[existingUser] = string.Empty;
+            }
+
+            if (!usersVotes[existingUser].Equals(e.input.controlID))
+            {
+                if (!usersVotes[existingUser].Equals(string.Empty)) // very first vote of the session ID for current question
                 {
-                    InteractiveConnectedSceneModel scene = this.scenes.FirstOrDefault(s => s.buttons.Contains(button));
-                    if (scene != null)
-                    {
-                        button.cooldown = DateTimeHelper.DateTimeOffsetToUnixTimestamp(DateTimeOffset.Now.AddSeconds(10));
-                        await this.interactiveClient.UpdateControls(scene, new List<InteractiveConnectedButtonControlModel>() { button });
-                        this.InteractiveDataTextBlock.Text += "Sent 10 second cooldown to button: " + e.input.controlID + Environment.NewLine;
-                    }
+                    this.votesCounters[usersVotes[existingUser]]--;
                 }
 
-                await this.interactiveClient.CaptureSparkTransaction(e.transactionID);
-                this.InteractiveDataTextBlock.Text += "Spark Transaction Captured: " + e.participantID + " - " + e.input.eventType + " - " + e.input.controlID + Environment.NewLine;
+                this.votesCounters[e.input.controlID]++;
+                usersVotes[existingUser] = e.input.controlID;
+                await this.chatClient.SendMessage($"{existingUser.Name} votes {e.input.controlID}");
             }
+
+            var statusMessage =
+                $"A:{votesCounters[AnswerA]}, B:{votesCounters[AnswerB]}, C:{votesCounters[AnswerC]}, D:{votesCounters[AnswerD]}";
+
+            await this.chatClient.SendMessage(statusMessage);
+            this.InteractiveDataTextBlock.Text += statusMessage + Environment.NewLine;
         }
 
         private void InteractiveClient_OnGroupCreate(object sender, InteractiveGroupCollectionModel e)
@@ -268,9 +319,33 @@ namespace CefBrowserTest
                 foreach (InteractiveParticipantModel participant in e.participants)
                 {
                     this.InteractiveDataTextBlock.Text += $"Participant Joined: {participant.username}, sessionID: {participant.sessionID}" + Environment.NewLine;
-                    this.sessionsUsersMapping[participant.sessionID] = participant.username;
+
+                    var newUser = new User(participant.username, participant.sessionID);
+                    if (this.users.Contains(newUser))
+                    {
+                        this.users.First(u => u.Equals(newUser)).Sessions.Add(participant.sessionID);
+                    }
+                    else
+                    {
+                        this.users.Add(newUser);
+                    }
                 }
             }
+        }
+
+        private async void ControlPanelWindow_Closed(object sender, EventArgs e)
+        {
+            if (this.interactiveClient != null)
+            {
+                await this.interactiveClient.Disconnect();
+            }
+
+            if (this.chatClient != null)
+            {
+                await this.chatClient.Disconnect();   
+            }
+
+            System.Windows.Application.Current.Shutdown();
         }
 
         private void InteractiveClient_OnParticipantLeave(object sender, InteractiveParticipantCollectionModel e)
@@ -280,7 +355,12 @@ namespace CefBrowserTest
                 foreach (InteractiveParticipantModel participant in e.participants)
                 {
                     this.InteractiveDataTextBlock.Text += "Participant Left: " + participant.username + Environment.NewLine;
-                    sessionsUsersMapping.Remove(participant.sessionID); // delete session id 
+
+                    var existingUser = users.FirstOrDefault(u => u.Name.Equals(participant.username));
+                    if (existingUser != null)
+                    {
+                        this.users.Remove(existingUser);
+                    }   
                 }
             }
         }
