@@ -36,6 +36,12 @@ namespace CefBrowserTest
 
         private MainWindow mainWindow = new MainWindow();
 
+        private readonly Dictionary<string, string> sessionsUsersMapping = new Dictionary<string, string>(); // mapping <sessionId, username>
+        private readonly Dictionary<string, string> usersVotes = new Dictionary<string, string>(); // mapping <username, vote>
+        private const string AnswerA = "A", AnswerB = "B", AnswerC = "C", AnswerD = "D";
+        private Dictionary<string, int> votesCounters = new Dictionary<string, int>() {{AnswerA, 0}, {AnswerB, 0}, {AnswerC, 0}, {AnswerD, 0}};
+
+
         public ControlPanel()
         {
             InitializeComponent();
@@ -172,8 +178,37 @@ namespace CefBrowserTest
 
         private async void InteractiveClient_OnGiveInput(object sender, InteractiveGiveInputModel e)
         {
-            var client = (InteractiveClient)sender;
             this.InteractiveDataTextBlock.Text += "Input Received: " + e.participantID + " - " + e.input.eventType + " - " + e.input.controlID + Environment.NewLine;
+
+            if (e.input.eventType.Equals("mouseup")) // register vote
+            {
+                if (!sessionsUsersMapping.ContainsKey(e.participantID)) // added to support users who not recorded by Joined event
+                {
+                    var allParticipants = await ((InteractiveClient)sender).GetAllParticipants(null);
+                    var participant = allParticipants.participants.Single(p => p.sessionID.Equals(e.participantID));
+                    this.sessionsUsersMapping[participant.sessionID] = participant.username;
+                    this.InteractiveDataTextBlock.Text += $"[Info]: Registered player: session id {e.participantID}, user {participant.username}" + Environment.NewLine;
+                }
+                 
+                if (!usersVotes.ContainsKey(sessionsUsersMapping[e.participantID]))
+                {
+                    usersVotes[sessionsUsersMapping[e.participantID]] = string.Empty;
+                }
+
+                if (!usersVotes[sessionsUsersMapping[e.participantID]].Equals(e.input.controlID))
+                {
+                    if (!usersVotes[sessionsUsersMapping[e.participantID]].Equals(string.Empty)) // very first vote of the session ID for current question
+                    {
+                        this.votesCounters[usersVotes[sessionsUsersMapping[e.participantID]]]--;
+                    }
+                        
+                    this.votesCounters[e.input.controlID]++;
+                    usersVotes[sessionsUsersMapping[e.participantID]] = e.input.controlID;
+                }
+
+                this.InteractiveDataTextBlock.Text += $"A:{votesCounters[AnswerA]}, B:{votesCounters[AnswerB]}, C:{votesCounters[AnswerC]}, D:{votesCounters[AnswerD]}" + Environment.NewLine;
+            }
+
 
             if (e.input.eventType.Equals("mousedown") && e.transactionID != null)
             {
@@ -232,7 +267,8 @@ namespace CefBrowserTest
             {
                 foreach (InteractiveParticipantModel participant in e.participants)
                 {
-                    this.InteractiveDataTextBlock.Text += "Participant Joined: " + participant.username + Environment.NewLine;
+                    this.InteractiveDataTextBlock.Text += $"Participant Joined: {participant.username}, sessionID: {participant.sessionID}" + Environment.NewLine;
+                    this.sessionsUsersMapping[participant.sessionID] = participant.username;
                 }
             }
         }
@@ -244,6 +280,7 @@ namespace CefBrowserTest
                 foreach (InteractiveParticipantModel participant in e.participants)
                 {
                     this.InteractiveDataTextBlock.Text += "Participant Left: " + participant.username + Environment.NewLine;
+                    sessionsUsersMapping.Remove(participant.sessionID); // delete session id 
                 }
             }
         }
