@@ -9,5 +9,6 @@
         Title="MainWindow" Height="750" Width="1000">
     <Grid>
         <wpf:ChromiumWebBrowser Name="ChromiumWebBrowser" Visibility="Hidden" Grid.Row="0" Address="https://wwbm.com" LoadingStateChanged="ChromiumWebBrowser_LoadingStateChanged" />
+        <Button Name="TestButton" Click="TestButton_OnClick" Content="Test" HorizontalAlignment="Left" VerticalAlignment="Top" Width="75"/>
     </Grid>
 </Window>

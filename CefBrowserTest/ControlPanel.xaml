@@ -18,9 +18,10 @@
             </StackPanel>
         </Grid>
 
-        <Grid x:Name="MainGrid" Visibility="Collapsed">
-            <TextBlock x:Name="InteractiveDataTextBlock" />
-            <Button x:Name="LaunchGameButton" Click="LaunchGameButton_OnClick" VerticalAlignment="Center" Width="200">Launch game</Button>
+        <Grid x:Name="MainGrid" Visibility="Visible">
+            <TextBlock x:Name="InteractiveDataTextBlock" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                       ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+            <Button x:Name="LaunchGameButton" Click="LaunchGameButton_OnClick" HorizontalAlignment="Right" VerticalAlignment="Bottom"  Width="200">Launch game</Button>
         </Grid>
     </Grid>
 </Window>

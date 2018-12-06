@@ -30,6 +30,30 @@ namespace CefBrowserTest
             InitializeComponent();
         }
 
+        public Task<JavascriptResponse> GetCurrentQuestionId()
+        {
+            var result = this.EvaluateJavaScript("$('.shag').index($('.shag_activ'))");
+            return result;
+        }
+
+        private async Task<JavascriptResponse> EvaluateJavaScript(string script)
+        {
+            JavascriptResponse response = null;
+            //Check if the browser can execute JavaScript and the ScriptTextBox is filled
+            if (this.ChromiumWebBrowser.CanExecuteJavascriptInMainFrame)
+            {
+                //Evaluate javascript and remember the evaluation result
+                response = await this.ChromiumWebBrowser.EvaluateScriptAsync(script)
+                    .ContinueWith(t =>
+                                   {
+                                       var result = t.Result;
+                                       return result;
+                                   });
+            }
+
+            return response;
+        }
+
         private async void ChromiumWebBrowser_LoadingStateChanged(object sender, CefSharp.LoadingStateChangedEventArgs e)
         {
             if (e.IsLoading)
@@ -48,23 +72,18 @@ namespace CefBrowserTest
                              + "var element16 = document.getElementsByClassName(\"section16\")[0]; element16.parentNode.removeChild(element16);"
                              + "var elementFooter = document.getElementsByClassName(\"footer\")[0]; elementFooter.parentNode.removeChild(elementFooter);";
 
-                //Check if the browser can execute JavaScript and the ScriptTextBox is filled
-                if (this.ChromiumWebBrowser.CanExecuteJavascriptInMainFrame)
-                {
-                    //Evaluate javascript and remember the evaluation result
-                    var response = await this.ChromiumWebBrowser.EvaluateScriptAsync(script);
-                    if (response.Result != null)
-                    {
-                        //Display the evaluation result if it is not empty
-                        MessageBox.Show(response.Result.ToString(), "JavaScript Result");
-                    }
-                }
+                var result = this.EvaluateJavaScript(script);
 
                 //Thread.Sleep(1000);
 
                 this.Dispatcher.BeginInvoke(DispatcherPriority.Normal,
                     new Action(() => this.ChromiumWebBrowser.Visibility = Visibility.Visible));
             }
+        }
+
+        private void TestButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var result = this.GetCurrentQuestionId();
         }
     }
 }

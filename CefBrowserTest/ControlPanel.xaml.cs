@@ -35,7 +35,7 @@ namespace CefBrowserTest
         private List<InteractiveConnectedLabelControlModel> labels = new List<InteractiveConnectedLabelControlModel>();
         private List<InteractiveConnectedTextBoxControlModel> textBoxes = new List<InteractiveConnectedTextBoxControlModel>();
 
-        private MainWindow mainWindow = new MainWindow();
+        private MainWindow mainWindow;
 
         private readonly List<User> users = new List<User>();
         private readonly Dictionary<User, string> usersVotes = new Dictionary<User, string>(); // mapping <username, vote>
@@ -188,7 +188,7 @@ namespace CefBrowserTest
 
         private async void MainWindow_Closed(object sender, EventArgs e)
         {
-            
+            System.Windows.Application.Current.Shutdown();
         }
 
         #region Event Methods
@@ -380,8 +380,8 @@ namespace CefBrowserTest
 
         private void LaunchGameButton_OnClick(object sender, RoutedEventArgs e)
         {
-            mainWindow.Show();
-            this.LaunchGameButton.Visibility = Visibility.Hidden;
+            this.mainWindow = new MainWindow();
+            this.mainWindow.Show();
         }
     }
 }
