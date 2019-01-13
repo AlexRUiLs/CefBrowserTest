@@ -30,9 +30,9 @@ namespace CefBrowserTest
             InitializeComponent();
         }
 
-        public Task<JavascriptResponse> GetCurrentQuestionId()
+        public async Task<JavascriptResponse> GetCurrentQuestionId()
         {
-            var result = this.EvaluateJavaScript("$('.shag').index($('.shag_activ'))");
+            var result = await this.EvaluateJavaScript("$('.shag').index($('.shag_activ'))");
             return result;
         }
 
@@ -43,12 +43,12 @@ namespace CefBrowserTest
             if (this.ChromiumWebBrowser.CanExecuteJavascriptInMainFrame)
             {
                 //Evaluate javascript and remember the evaluation result
-                response = await this.ChromiumWebBrowser.EvaluateScriptAsync(script)
-                    .ContinueWith(t =>
-                                   {
-                                       var result = t.Result;
-                                       return result;
-                                   });
+                response = await this.ChromiumWebBrowser.EvaluateScriptAsync(script);
+                //.ContinueWith(t =>
+                //               {
+                //                   var result = t.Result;
+                //                   return result;
+                //               });
             }
 
             return response;
@@ -81,9 +81,9 @@ namespace CefBrowserTest
             }
         }
 
-        private void TestButton_OnClick(object sender, RoutedEventArgs e)
+        private async void TestButton_OnClick(object sender, RoutedEventArgs e)
         {
-            var result = this.GetCurrentQuestionId();
+            var result = await this.GetCurrentQuestionId();
         }
     }
 }
