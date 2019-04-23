@@ -5,12 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:CefBrowserTest"
         mc:Ignorable="d"
-        Title="ControlPanel" Height="350" Width="525" Closed="ControlPanelWindow_Closed">
+        Title="ControlPanel" Height="363.5" Width="525" Closed="ControlPanelWindow_Closed">
     <Grid>
-        <Grid x:Name="LoginGrid" Visibility="Visible">
-            <Button x:Name="LoginButton" Click="LoginButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Width="60">Login</Button>
-        </Grid>
-
         <Grid x:Name="GameSelectGrid" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel>
                 <ComboBox x:Name="GameSelectComboBox" Width="200" />
@@ -18,10 +14,16 @@
             </StackPanel>
         </Grid>
 
+
+
         <Grid x:Name="MainGrid" Visibility="Visible">
             <TextBlock x:Name="InteractiveDataTextBlock" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                       ScrollViewer.VerticalScrollBarVisibility="Auto"/>
-            <Button x:Name="LaunchGameButton" Click="LaunchGameButton_OnClick" HorizontalAlignment="Right" VerticalAlignment="Bottom"  Width="200">Launch game</Button>
+                       ScrollViewer.VerticalScrollBarVisibility="Auto" Margin="0,0,0,56.5"/>
+
+            <Grid x:Name="LoginGrid" Visibility="Visible" />
+            <Button x:Name="TestButton" Content="Test" Click="TestButton_OnClick" Margin="0,298,445,0.5"/>
+            <Button x:Name="LoginButton" Click="LoginButton_Click" Margin="196,298,248,0" Content="Login"/>
+            <Button x:Name="LaunchGameButton" Click="LaunchGameButton_OnClick" Margin="392,297,0,0" Content="Launch game"/>
         </Grid>
     </Grid>
 </Window>

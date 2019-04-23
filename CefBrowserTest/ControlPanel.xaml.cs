@@ -9,13 +9,15 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows;
 
 namespace CefBrowserTest
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
+    /// Interaction logic for GameWindow.xaml
     /// </summary>
     public partial class ControlPanel : Window
     {
@@ -35,7 +37,7 @@ namespace CefBrowserTest
         private List<InteractiveConnectedLabelControlModel> labels = new List<InteractiveConnectedLabelControlModel>();
         private List<InteractiveConnectedTextBoxControlModel> textBoxes = new List<InteractiveConnectedTextBoxControlModel>();
 
-        private MainWindow mainWindow;
+        private GameWindow gameWindow;
 
         private readonly List<User> users = new List<User>();
         private readonly Dictionary<User, string> usersVotes = new Dictionary<User, string>(); // mapping <username, vote>
@@ -43,11 +45,13 @@ namespace CefBrowserTest
         private const string AnswerA = "A", AnswerB = "B", AnswerC = "C", AnswerD = "D";
         private readonly Dictionary<string, int> votesCounters = new Dictionary<string, int>() {{AnswerA, 0}, {AnswerB, 0}, {AnswerC, 0}, {AnswerD, 0}};
 
+        private Task questionTimerTask = Task.CompletedTask;
+        private CancellationTokenSource source = new CancellationTokenSource();
 
         public ControlPanel()
         {
             InitializeComponent();
-            this.Closed += MainWindow_Closed;
+            this.Closed += GameWindow_Closed;
         }
 
         private async void LoginButton_Click(object sender, RoutedEventArgs e)
@@ -186,7 +190,7 @@ namespace CefBrowserTest
             }
         }
 
-        private async void MainWindow_Closed(object sender, EventArgs e)
+        private async void GameWindow_Closed(object sender, EventArgs e)
         {
             System.Windows.Application.Current.Shutdown();
         }
@@ -278,6 +282,14 @@ namespace CefBrowserTest
 
             await this.chatClient.SendMessage(statusMessage);
             this.InteractiveDataTextBlock.Text += statusMessage + Environment.NewLine;
+        }
+
+        private void ResetVotes()
+        {
+            foreach (var keyValuePair in this.votesCounters)
+            {
+                this.votesCounters[keyValuePair.Key] = 0;
+            }
         }
 
         private void InteractiveClient_OnGroupCreate(object sender, InteractiveGroupCollectionModel e)
@@ -380,8 +392,65 @@ namespace CefBrowserTest
 
         private void LaunchGameButton_OnClick(object sender, RoutedEventArgs e)
         {
-            this.mainWindow = new MainWindow();
-            this.mainWindow.Show();
+            this.gameWindow = new GameWindow();
+            this.gameWindow.Show();
+            StartVotesDetection();
+        }
+
+        private async Task StartVotesDetection()
+        {
+            var startGatheringVotes = false;
+
+            while (this.votesCounters.All(kvp => kvp.Value == 0))
+            {
+                await Task.Delay(300);
+            }
+
+            await StartTimerGatherVotesSelectAnswerWaitForNextQuestion();
+            await StartVotesDetection();
+
+            //while (true)
+            //{
+            //    if (startGatheringVotes)
+            //    {
+            //        startGatheringVotes = false;
+            //        await StartTimerGatherVotesSelectAnswerWaitForNextQuestion();
+            //        //startGatheringVotes = true;
+            //    }
+            //    else
+            //    {
+            //        await Task.Delay(300);
+            //    }
+            //}
+        }
+
+        private async Task StartTimerGatherVotesSelectAnswerWaitForNextQuestion()
+        {
+            if (questionTimerTask.IsCompleted)
+            {
+                this.questionTimerTask = this.gameWindow.StartTimer(source.Token);
+            }
+            else
+            {
+                source.Cancel();
+                source = new CancellationTokenSource();
+            }
+
+            await this.questionTimerTask.ContinueWith(async t =>
+            {
+                var maxVoteOption = this.votesCounters.Aggregate((x, y) => x.Value > y.Value ? x : y).Key;
+                await this.gameWindow.SelectAnswerAndWaitForNextQuestion(maxVoteOption);
+
+                foreach (var key in this.votesCounters.Keys)
+                {
+                    this.votesCounters[key] = 0;
+                }
+            });
+        }
+
+        private async void TestButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            await StartTimerGatherVotesSelectAnswerWaitForNextQuestion();
         }
     }
 }

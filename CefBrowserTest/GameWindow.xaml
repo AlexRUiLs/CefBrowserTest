@@ -1,4 +1,4 @@
-﻿<Window x:Class="CefBrowserTest.MainWindow"
+﻿<Window x:Class="CefBrowserTest.GameWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -6,9 +6,10 @@
         xmlns:local="clr-namespace:CefBrowserTest"
         xmlns:wpf="clr-namespace:CefSharp.Wpf;assembly=CefSharp.Wpf"
         mc:Ignorable="d"
-        Title="MainWindow" Height="750" Width="1000">
+        Title="GameWindow" Height="750" Width="1000">
     <Grid>
-        <wpf:ChromiumWebBrowser Name="ChromiumWebBrowser" Visibility="Hidden" Grid.Row="0" Address="https://wwbm.com" LoadingStateChanged="ChromiumWebBrowser_LoadingStateChanged" />
+        <wpf:ChromiumWebBrowser Name="ChromiumWebBrowser" Visibility="Hidden" Grid.Row="0" Address="http://tvmillioner.ru" LoadingStateChanged="ChromiumWebBrowser_LoadingStateChanged" />
         <Button Name="TestButton" Click="TestButton_OnClick" Content="Test" HorizontalAlignment="Left" VerticalAlignment="Top" Width="75"/>
+        <Label Name="SecondsBackCounter" Content="60" HorizontalAlignment="Left" Margin="120,-26,0,0" VerticalAlignment="Top" FontSize="72" Foreground="#FFE01616"/>
     </Grid>
 </Window>
